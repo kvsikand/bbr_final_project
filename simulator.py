@@ -4,7 +4,7 @@ import cv2
 parser = argparse.ArgumentParser('Simulate stiffness ellipses')
 
 
-parser.add_argument('--k_t', type=float, default=[10, 9], nargs='+', help='stiffness of tendons')
+parser.add_argument('--k_t', type=float, default=[1, 2], nargs='+', help='stiffness of tendons')
 parser.add_argument('--joint_lengths', type=float, default=[0.75, 1.2], nargs='+', help='lengths of joints')
 parser.add_argument('--num_joints', type=int, default=2, help='number of joints')
 
@@ -17,20 +17,38 @@ parser.add_argument('--num_joints', type=int, default=2, help='number of joints'
 SCALING = 100
 
 def get_jacobian(q, lengths):
+  l_s = lengths[0]
+  l_e = lengths[1]
+
   if q.shape[0] == 2:
     s_s = np.sin(q[0])
     c_s = np.cos(q[0])
     s_se = np.sin(q[0] + q[1])
     c_se = np.cos(q[0] + q[1])
     return np.array([
-      [-lengths[0] * s_s - lengths[1] * s_se, -lengths[1] * s_se],
-      [lengths[0] * c_s + lengths[1] * c_se, lengths[1] * c_se]
+      [-l_s * s_s - l_e * s_se, -l_e * s_se],
+      [l_s * c_s + l_e * c_se, l_e * c_se]
     ])
-  else:
-    raise NotImplementedError('Jacobian not implemented for more than 2 joints')
+  elif q.shape[0] == 3:
+    l_h = lengths[2]
+    q_s, q_e, q_h = q
+    # terms for jacobian
+    s_s = np.sin(q_s)
+    s_se = np.sin(q_s + q_e)
+    s_seh = np.sin(q_s + q_e + q_h)
+    c_s = np.cos(q_s)
+    c_se = np.cos(q_s + q_e)
+    c_seh = np.cos(q_s + q_e + q_h)
+    # jacobian
+    return np.array([
+      [-(l_s*s_s + l_e*s_se + l_h*s_seh), -(l_e*s_se + l_h*s_seh), -l_h*s_seh],
+      [l_s*c_s + l_e*c_se + l_h*c_seh, l_e*c_se + l_h*c_seh, l_h*c_seh]
+    ])
+  else: 
+    raise NotImplementedError('Jacobian not implemented for more than 3 joints')
 
 def get_endpoint_stiffness(jacobian, K_joint):
-  j_inv = np.linalg.inv(jacobian)
+  j_inv = np.linalg.pinv(jacobian)
   return j_inv.transpose() @ K_joint @ j_inv
 
 def get_joint_stiffness(R_joint_tendon, K_sc):
@@ -70,11 +88,27 @@ def draw_configuration(img, q, joint_lengths):
   ])
   wrist_pos = elbow_pos + R_se @ np.array([joint_lengths[1] * SCALING, 0])
 
+  if q.shape[0] > 2:
+    # create rotation matrix for q[2]
+    s_seh = np.sin(q[0] + q[1] + q[2])
+    c_seh = np.cos(q[0] + q[1] + q[2])
+    R_seh = np.array([
+      [c_seh, -s_seh],
+      [s_seh, c_seh]
+    ])
+    hand_pos = wrist_pos + R_seh @ np.array([joint_lengths[2] * SCALING, 0])
+
   elbow_pos = elbow_pos.astype(int)
   wrist_pos = wrist_pos.astype(int)
-  
+  if q.shape[0] > 2:
+    hand_pos = hand_pos.astype(int)
+
   cv2.line(img, (CENTER[0], CENTER[1]), (elbow_pos[0], elbow_pos[1]), (0, 255, 0), 2)
   cv2.line(img, (elbow_pos[0], elbow_pos[1]),  (wrist_pos[0], wrist_pos[1]), (0, 255, 0), 2)
+  if q.shape[0] > 2:
+    cv2.line(img, (wrist_pos[0], wrist_pos[1]),  (hand_pos[0], hand_pos[1]), (0, 255, 0), 2)
+    return hand_pos
+  
   return wrist_pos
 
 def draw_endpoint_stiffness(img, K, point, color):
@@ -85,6 +119,7 @@ def draw_endpoint_stiffness(img, K, point, color):
   angle = np.arctan2(eigenvectors[0][1], eigenvectors[0][0])
   print('angle delta', np.degrees(np.arctan2(eigenvectors[1][1], eigenvectors[1][0]) - np.arctan2(eigenvectors[0][1], eigenvectors[0][0])))
   print('eigenvalues', eigenvalues)
+  print("ANGLE",  np.degrees(angle))
   cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0]), int(eigenvalues[1])), np.degrees(angle), 0, 360, color)
 
 args = parser.parse_args()
@@ -93,8 +128,8 @@ blank_image = np.zeros((500, 500, 3), np.uint8)
 
 q = np.zeros(args.num_joints)
 for i in range(5):
-  q[0] += np.pi / 15
-  q[1] += np.pi / 15
+  for j in range(args.num_joints):
+    q[j] += np.pi / 15
   K_endpoint_servo = get_configuration_endpoint_stiffness_servo(q, args.k_t, args.joint_lengths)
   print(K_endpoint_servo)
   endpoint = draw_configuration(blank_image, q, args.joint_lengths)
