@@ -4,8 +4,8 @@ import cv2
 parser = argparse.ArgumentParser('Simulate stiffness ellipses')
 
 
-parser.add_argument('--k_t', type=float, default=[1e3, 3e3], nargs='+', help='stiffness of tendons')
-parser.add_argument('--joint_lengths', type=float, default=[140.0, 100.0], nargs='+', help='lengths of joints')
+parser.add_argument('--k_t', type=float, default=[10, 9], nargs='+', help='stiffness of tendons')
+parser.add_argument('--joint_lengths', type=float, default=[0.75, 1.2], nargs='+', help='lengths of joints')
 parser.add_argument('--num_joints', type=int, default=2, help='number of joints')
 
 
@@ -13,6 +13,8 @@ parser.add_argument('--num_joints', type=int, default=2, help='number of joints'
 # moment arm, λ the muscle length, Kμ the muscle stiffness, D the joint viscosity, q the joint
 # angular velocity, 
 # λ the rate of change of muscle length, and D μ the muscle viscosity
+
+SCALING = 100
 
 def get_jacobian(q, lengths):
   if q.shape[0] == 2:
@@ -58,7 +60,7 @@ def draw_configuration(img, q, joint_lengths):
     [c_s, -s_s],
     [s_s, c_s]
   ])
-  elbow_pos = CENTER + R_s @ np.array([joint_lengths[0], 0])
+  elbow_pos = CENTER + R_s @ np.array([joint_lengths[0] * SCALING, 0])
   # create rotation matrix for q[1]
   s_se = np.sin(q[0] + q[1])
   c_se = np.cos(q[0] + q[1])
@@ -66,7 +68,7 @@ def draw_configuration(img, q, joint_lengths):
     [c_se, -s_se],
     [s_se, c_se]
   ])
-  wrist_pos = elbow_pos + R_se @ np.array([joint_lengths[1], 0])
+  wrist_pos = elbow_pos + R_se @ np.array([joint_lengths[1] * SCALING, 0])
 
   elbow_pos = elbow_pos.astype(int)
   wrist_pos = wrist_pos.astype(int)
@@ -77,10 +79,13 @@ def draw_configuration(img, q, joint_lengths):
 
 def draw_endpoint_stiffness(img, K, point, color):
   eigenvalues, eigenvectors = np.linalg.eig(K)
+  if (eigenvalues[0] > eigenvalues[1]):
+    eigenvalues = eigenvalues[::-1]
+    eigenvectors = eigenvectors[:, ::-1]
   angle = np.arctan2(eigenvectors[0][1], eigenvectors[0][0])
   print('angle delta', np.degrees(np.arctan2(eigenvectors[1][1], eigenvectors[1][0]) - np.arctan2(eigenvectors[0][1], eigenvectors[0][0])))
   print('eigenvalues', eigenvalues)
-  cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0] * 10), int(eigenvalues[1] * 10)), angle, 0, 360, color)
+  cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0]), int(eigenvalues[1])), np.degrees(angle), 0, 360, color)
 
 args = parser.parse_args()
 
@@ -92,9 +97,6 @@ for i in range(5):
   q[1] += np.pi / 15
   K_endpoint_servo = get_configuration_endpoint_stiffness_servo(q, args.k_t, args.joint_lengths)
   print(K_endpoint_servo)
-  print("EIG")
-  print(np.linalg.eig(K_endpoint_servo)[0])
-  print(np.linalg.eig(K_endpoint_servo)[1])
   endpoint = draw_configuration(blank_image, q, args.joint_lengths)
   draw_endpoint_stiffness(blank_image, K_endpoint_servo, endpoint, (0, 0, 255))
 
