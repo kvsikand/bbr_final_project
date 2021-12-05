@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import cv2
+import math
 parser = argparse.ArgumentParser('Simulate stiffness ellipses')
 
 
@@ -11,7 +12,7 @@ parser.add_argument('--num_joints', type=int, default=2, help='number of joints'
 
 # K is the joint stiffness, τ the joint torque, q the joint angle, μ the muscle force, ρ the
 # moment arm, λ the muscle length, Kμ the muscle stiffness, D the joint viscosity, q the joint
-# angular velocity, 
+# angular velocity,
 # λ the rate of change of muscle length, and D μ the muscle viscosity
 
 SCALING = 100
@@ -54,15 +55,37 @@ def get_endpoint_stiffness(jacobian, K_joint):
 def get_joint_stiffness(R_joint_tendon, K_sc):
   return R_joint_tendon.transpose() @ K_sc @ R_joint_tendon
 
-def get_configuration_endpoint_stiffness_servo(q, tendon_stiffnesses, lengths):
+def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths):
   joints = q.shape[0]
   jacobian = get_jacobian(q, lengths)
 
   # servo-design. R_joint_tendon is the identity matrix
-  R_joint_tendon = np.eye(joints)
-  K_sc = np.zeros((joints, joints))
-  for j in range(joints):
-    K_sc[j, j] = tendon_stiffnesses[j]
+  l_s = lengths[0]
+  l_e = lengths[1]
+  if joints > 2:
+    l_h = lengths[2]
+  if joints == 2:
+    R_joint_tendon = np.array([
+      [l_s, 0],
+      [-l_s, 0],
+      [0, l_e],
+      [0, -l_e],
+    ])
+  elif joints > 2:
+    R_joint_tendon = np.array([
+      [l_s, 0, 0],
+      [-l_s, 0, 0],
+      [0, l_e, 0],
+      [0, -l_e, 0],
+      [0, 0, l_h],
+      [0, 0, -l_h],
+    ])
+  
+  print(R_joint_tendon.shape)
+  K_sc = np.zeros((joints * 2, joints * 2))
+  print(K_sc.shape)
+  for j in range(joints * 2):
+    K_sc[j, j] = tendon_stiffnesses[math.floor(j / 2)]
 
   K_joint_servo = get_joint_stiffness(R_joint_tendon, K_sc)
   K_endpoint_servo = get_endpoint_stiffness(jacobian, K_joint_servo)
@@ -117,10 +140,10 @@ def draw_endpoint_stiffness(img, K, point, color):
     eigenvalues = eigenvalues[::-1]
     eigenvectors = eigenvectors[:, ::-1]
   angle = np.arctan2(eigenvectors[0][1], eigenvectors[0][0])
-  print('angle delta', np.degrees(np.arctan2(eigenvectors[1][1], eigenvectors[1][0]) - np.arctan2(eigenvectors[0][1], eigenvectors[0][0])))
-  print('eigenvalues', eigenvalues)
-  print("ANGLE",  np.degrees(angle))
-  cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0]), int(eigenvalues[1])), np.degrees(angle), 0, 360, color)
+  # print('angle delta', np.degrees(np.arctan2(eigenvectors[1][1], eigenvectors[1][0]) - np.arctan2(eigenvectors[0][1], eigenvectors[0][0])))
+  # print('eigenvalues', eigenvalues)
+  # print("ANGLE",  np.degrees(angle))
+  cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0]), int(eigenvalues[1])), 90 - np.degrees(angle), 0, 360, color)
 
 args = parser.parse_args()
 
@@ -129,8 +152,8 @@ blank_image = np.zeros((500, 500, 3), np.uint8)
 q = np.zeros(args.num_joints)
 for i in range(5):
   for j in range(args.num_joints):
-    q[j] += np.pi / 15
-  K_endpoint_servo = get_configuration_endpoint_stiffness_servo(q, args.k_t, args.joint_lengths)
+    q[j] += np.pi / 10
+  K_endpoint_servo = get_configuration_endpoint_stiffness_tendons(q, args.k_t, args.joint_lengths)
   print(K_endpoint_servo)
   endpoint = draw_configuration(blank_image, q, args.joint_lengths)
   draw_endpoint_stiffness(blank_image, K_endpoint_servo, endpoint, (0, 0, 255))
