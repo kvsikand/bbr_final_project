@@ -10,3 +10,5 @@ We support simulating the endpoint stiffness ellipse given arbitrary limb length
 ### Running the Simulator
 
 See the files run_simulator_*.sh for examples of running the code in mono-articular and bi-articular modes.
+
+This project requires python, numpy, and opencv
