@@ -76,14 +76,14 @@ def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths,
   elif joints > 2:
     if biarticular:
       # assume biarticular tendons are the same length as the mono articular ones
-      t_bs_plus = t_s
-      t_be_plus = t_e
-      t_bs_minus = t_s
-      t_be_minus = t_e
-      t_beh_plus = t_e
-      t_bh_plus = t_h
-      t_beh_minus = t_e
-      t_bh_minus = t_h
+      t_bs_plus = tendon_lengths[3]
+      t_be_plus = tendon_lengths[3]
+      t_bs_minus = tendon_lengths[3]
+      t_be_minus = tendon_lengths[3]
+      t_beh_plus = tendon_lengths[4]
+      t_bh_plus = tendon_lengths[4]
+      t_beh_minus = tendon_lengths[4]
+      t_bh_minus = tendon_lengths[4]
       R_joint_tendon = np.array([
         [t_s, 0, 0],
         [-t_s, 0, 0],
@@ -164,9 +164,7 @@ def draw_endpoint_stiffness(img, K, point, color):
     eigenvalues = eigenvalues[::-1]
     eigenvectors = eigenvectors[:, ::-1]
   angle = np.arctan2(eigenvectors[0][1], eigenvectors[0][0])
-  # print('angle delta', np.degrees(np.arctan2(eigenvectors[1][1], eigenvectors[1][0]) - np.arctan2(eigenvectors[0][1], eigenvectors[0][0])))
-  # print('eigenvalues', eigenvalues)
-  # print("ANGLE",  np.degrees(angle))
+  print('eigenvalues', eigenvalues)
   cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0]), int(eigenvalues[1])), 90 - np.degrees(angle), 0, 360, color)
 
 args = parser.parse_args()
@@ -178,7 +176,6 @@ for i in range(5):
   for j in range(args.num_joints):
     q[j] += np.pi / 10
   K_endpoint_servo = get_configuration_endpoint_stiffness_tendons(q, args.k_t, args.joint_lengths, args.tendon_lengths, args.biarticular)
-  print(K_endpoint_servo)
   endpoint = draw_configuration(blank_image, q, args.joint_lengths)
   draw_endpoint_stiffness(blank_image, K_endpoint_servo, endpoint, (0, 0, 255))
 

@@ -7,6 +7,9 @@ The aim of this simulator is to XXXX?
 
 We support simulating the endpoint stiffness ellipse given arbitrary limb lengths and tendon stiffness parameters. We also support both bi-articular and mono-articular tendons, to show how these can affect endpoint stiffnesss.
 
+In mono-articular mode, there are 3 simulated tendons, each of which actuates a single joint.
+In bi-articular mode, there are 5 simulated tendons, 2 of which are bi-articular.
+
 ### Running the Simulator
 
 See the files run_simulator_*.sh for examples of running the code in mono-articular and bi-articular modes.
