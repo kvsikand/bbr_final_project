@@ -5,8 +5,9 @@ import math
 parser = argparse.ArgumentParser('Simulate stiffness ellipses')
 
 
-parser.add_argument('--k_t', type=float, default=[1, 2], nargs='+', help='stiffness of tendons')
-parser.add_argument('--joint_lengths', type=float, default=[0.75, 1.2], nargs='+', help='lengths of joints')
+parser.add_argument('--k_t', type=float, default=[10, 30, 10], nargs='+', help='stiffness of tendons')
+parser.add_argument('--joint_lengths', type=float, default=[0.75, 1.2, 0.3], nargs='+', help='lengths of joints')
+parser.add_argument('--tendon_lengths', type=float, default=[0.75, 1.0, 0.25], nargs='+', help='lengths of tendons')
 parser.add_argument('--num_joints', type=int, default=2, help='number of joints')
 
 
@@ -55,30 +56,30 @@ def get_endpoint_stiffness(jacobian, K_joint):
 def get_joint_stiffness(R_joint_tendon, K_sc):
   return R_joint_tendon.transpose() @ K_sc @ R_joint_tendon
 
-def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths):
+def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths, tendon_lengths):
   joints = q.shape[0]
   jacobian = get_jacobian(q, lengths)
 
   # servo-design. R_joint_tendon is the identity matrix
-  l_s = lengths[0]
-  l_e = lengths[1]
+  t_s = tendon_lengths[0]
+  t_e = tendon_lengths[1]
   if joints > 2:
-    l_h = lengths[2]
+    t_h = tendon_lengths[2]
   if joints == 2:
     R_joint_tendon = np.array([
-      [l_s, 0],
-      [-l_s, 0],
-      [0, l_e],
-      [0, -l_e],
+      [t_s, 0],
+      [-t_s, 0],
+      [0, t_e],
+      [0, -t_e],
     ])
   elif joints > 2:
     R_joint_tendon = np.array([
-      [l_s, 0, 0],
-      [-l_s, 0, 0],
-      [0, l_e, 0],
-      [0, -l_e, 0],
-      [0, 0, l_h],
-      [0, 0, -l_h],
+      [t_s, 0, 0],
+      [-t_s, 0, 0],
+      [0, t_e, 0],
+      [0, -t_e, 0],
+      [0, 0, t_h],
+      [0, 0, -t_h],
     ])
   
   print(R_joint_tendon.shape)
@@ -153,7 +154,7 @@ q = np.zeros(args.num_joints)
 for i in range(5):
   for j in range(args.num_joints):
     q[j] += np.pi / 10
-  K_endpoint_servo = get_configuration_endpoint_stiffness_tendons(q, args.k_t, args.joint_lengths)
+  K_endpoint_servo = get_configuration_endpoint_stiffness_tendons(q, args.k_t, args.joint_lengths, args.tendon_lengths)
   print(K_endpoint_servo)
   endpoint = draw_configuration(blank_image, q, args.joint_lengths)
   draw_endpoint_stiffness(blank_image, K_endpoint_servo, endpoint, (0, 0, 255))
