@@ -5,10 +5,11 @@ import math
 parser = argparse.ArgumentParser('Simulate stiffness ellipses')
 
 
-parser.add_argument('--k_t', type=float, default=[10, 30, 10], nargs='+', help='stiffness of tendons')
+parser.add_argument('--k_t', type=float, default=[10, 10, 10], nargs='+', help='stiffness of tendons')
 parser.add_argument('--joint_lengths', type=float, default=[0.75, 1.2, 0.3], nargs='+', help='lengths of joints')
 parser.add_argument('--tendon_lengths', type=float, default=[0.75, 1.0, 0.25], nargs='+', help='lengths of tendons')
 parser.add_argument('--num_joints', type=int, default=2, help='number of joints')
+parser.add_argument('--biarticular', action='store_true')
 
 
 # K is the joint stiffness, τ the joint torque, q the joint angle, μ the muscle force, ρ the
@@ -56,7 +57,7 @@ def get_endpoint_stiffness(jacobian, K_joint):
 def get_joint_stiffness(R_joint_tendon, K_sc):
   return R_joint_tendon.transpose() @ K_sc @ R_joint_tendon
 
-def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths, tendon_lengths):
+def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths, tendon_lengths, biarticular=False):
   joints = q.shape[0]
   jacobian = get_jacobian(q, lengths)
 
@@ -73,19 +74,41 @@ def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths,
       [0, -t_e],
     ])
   elif joints > 2:
-    R_joint_tendon = np.array([
-      [t_s, 0, 0],
-      [-t_s, 0, 0],
-      [0, t_e, 0],
-      [0, -t_e, 0],
-      [0, 0, t_h],
-      [0, 0, -t_h],
-    ])
-  
-  print(R_joint_tendon.shape)
-  K_sc = np.zeros((joints * 2, joints * 2))
-  print(K_sc.shape)
-  for j in range(joints * 2):
+    if biarticular:
+      # assume biarticular tendons are the same length as the mono articular ones
+      t_bs_plus = t_s
+      t_be_plus = t_e
+      t_bs_minus = t_s
+      t_be_minus = t_e
+      t_beh_plus = t_e
+      t_bh_plus = t_h
+      t_beh_minus = t_e
+      t_bh_minus = t_h
+      R_joint_tendon = np.array([
+        [t_s, 0, 0],
+        [-t_s, 0, 0],
+        [t_bs_plus, t_be_plus, 0],
+        [-t_bs_minus, -t_be_minus, 0],
+        [0, t_e, 0],
+        [0, -t_e, 0],
+        [0, t_beh_plus, t_bh_plus],
+        [0, -t_beh_minus, -t_bh_minus],
+        [0, 0, t_h],
+        [0, 0, -t_h],
+      ])
+    else:
+      R_joint_tendon = np.array([
+        [t_s, 0, 0],
+        [-t_s, 0, 0],
+        [0, t_e, 0],
+        [0, -t_e, 0],
+        [0, 0, t_h],
+        [0, 0, -t_h],
+      ])
+
+  num_tendons = len(tendon_stiffnesses)
+  K_sc = np.zeros((num_tendons * 2, num_tendons * 2))
+  for j in range(num_tendons * 2):
     K_sc[j, j] = tendon_stiffnesses[math.floor(j / 2)]
 
   K_joint_servo = get_joint_stiffness(R_joint_tendon, K_sc)
@@ -154,7 +177,7 @@ q = np.zeros(args.num_joints)
 for i in range(5):
   for j in range(args.num_joints):
     q[j] += np.pi / 10
-  K_endpoint_servo = get_configuration_endpoint_stiffness_tendons(q, args.k_t, args.joint_lengths, args.tendon_lengths)
+  K_endpoint_servo = get_configuration_endpoint_stiffness_tendons(q, args.k_t, args.joint_lengths, args.tendon_lengths, args.biarticular)
   print(K_endpoint_servo)
   endpoint = draw_configuration(blank_image, q, args.joint_lengths)
   draw_endpoint_stiffness(blank_image, K_endpoint_servo, endpoint, (0, 0, 255))
