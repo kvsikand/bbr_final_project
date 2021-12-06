@@ -26,14 +26,14 @@ In bi-articular mode, the order of tendon stiffnesses is:
  - elbow+hand
  - hand
 
-And the order of tendon lengths is:
+And the order of tendon moment arms is:
  - shoulder
  - elbow
  - hand
- - shoulder+elbow
- - elbow+hand
-
-The bi-articular tendon lengths are assumed to be equidistant from both joints that they affect
+ - SE distance to shoulder
+ - SE distance to elbow
+ - EH distance to elbow
+ - EH distance to hand
 
 
 This project requires python, numpy, and opencv

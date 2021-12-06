@@ -71,10 +71,11 @@ def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths,
     if biarticular:
       # assume biarticular tendons are the same length as the mono articular ones
       t_bs_plus = tendon_lengths[3]
-      t_be_plus = tendon_lengths[3]
+      t_be_plus = tendon_lengths[4]
 
-      t_beh_plus = tendon_lengths[4]
-      t_bh_plus = tendon_lengths[4]
+      t_beh_plus = tendon_lengths[5]
+      t_bh_plus = tendon_lengths[6]
+
       R_joint_tendon = np.array([
         [t_s, 0, 0],
         [t_bs_plus, t_be_plus, 0],
