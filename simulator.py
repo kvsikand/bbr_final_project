@@ -11,12 +11,6 @@ parser.add_argument('--tendon_lengths', type=float, default=[0.75, 1.0, 0.25], n
 parser.add_argument('--num_joints', type=int, default=2, help='number of joints')
 parser.add_argument('--biarticular', action='store_true')
 
-
-# K is the joint stiffness, τ the joint torque, q the joint angle, μ the muscle force, ρ the
-# moment arm, λ the muscle length, Kμ the muscle stiffness, D the joint viscosity, q the joint
-# angular velocity,
-# λ the rate of change of muscle length, and D μ the muscle viscosity
-
 SCALING = 100
 
 def get_jacobian(q, lengths):
@@ -78,38 +72,27 @@ def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths,
       # assume biarticular tendons are the same length as the mono articular ones
       t_bs_plus = tendon_lengths[3]
       t_be_plus = tendon_lengths[3]
-      t_bs_minus = tendon_lengths[3]
-      t_be_minus = tendon_lengths[3]
+
       t_beh_plus = tendon_lengths[4]
       t_bh_plus = tendon_lengths[4]
-      t_beh_minus = tendon_lengths[4]
-      t_bh_minus = tendon_lengths[4]
       R_joint_tendon = np.array([
         [t_s, 0, 0],
-        [-t_s, 0, 0],
         [t_bs_plus, t_be_plus, 0],
-        [-t_bs_minus, -t_be_minus, 0],
         [0, t_e, 0],
-        [0, -t_e, 0],
         [0, t_beh_plus, t_bh_plus],
-        [0, -t_beh_minus, -t_bh_minus],
         [0, 0, t_h],
-        [0, 0, -t_h],
       ])
     else:
       R_joint_tendon = np.array([
         [t_s, 0, 0],
-        [-t_s, 0, 0],
         [0, t_e, 0],
-        [0, -t_e, 0],
         [0, 0, t_h],
-        [0, 0, -t_h],
       ])
 
   num_tendons = len(tendon_stiffnesses)
-  K_sc = np.zeros((num_tendons * 2, num_tendons * 2))
-  for j in range(num_tendons * 2):
-    K_sc[j, j] = tendon_stiffnesses[math.floor(j / 2)]
+  K_sc = np.zeros((num_tendons, num_tendons))
+  for j in range(num_tendons):
+    K_sc[j, j] = tendon_stiffnesses[math.floor(j)]
 
   K_joint_servo = get_joint_stiffness(R_joint_tendon, K_sc)
   K_endpoint_servo = get_endpoint_stiffness(jacobian, K_joint_servo)
@@ -118,6 +101,9 @@ def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths,
 
 def draw_configuration(img, q, joint_lengths):
   CENTER = np.array([150, 150])
+  COLOR = (0, 255, 0)
+
+  # cv2.line(img, (HEAD_LOCATION[0], HEAD_LOCATION[1]), (CENTER[0], CENTER[1]), COLOR)
   # create rotation matrix for q[0]
   s_s = np.sin(q[0])
   c_s = np.cos(q[0])
@@ -150,10 +136,10 @@ def draw_configuration(img, q, joint_lengths):
   if q.shape[0] > 2:
     hand_pos = hand_pos.astype(int)
 
-  cv2.line(img, (CENTER[0], CENTER[1]), (elbow_pos[0], elbow_pos[1]), (0, 255, 0), 2)
-  cv2.line(img, (elbow_pos[0], elbow_pos[1]),  (wrist_pos[0], wrist_pos[1]), (0, 255, 0), 2)
+  cv2.line(img, (CENTER[0], CENTER[1]), (elbow_pos[0], elbow_pos[1]), COLOR, 2)
+  cv2.line(img, (elbow_pos[0], elbow_pos[1]),  (wrist_pos[0], wrist_pos[1]), COLOR, 2)
   if q.shape[0] > 2:
-    cv2.line(img, (wrist_pos[0], wrist_pos[1]),  (hand_pos[0], hand_pos[1]), (0, 255, 0), 2)
+    cv2.line(img, (wrist_pos[0], wrist_pos[1]),  (hand_pos[0], hand_pos[1]), COLOR, 2)
     return hand_pos
   
   return wrist_pos
@@ -169,7 +155,12 @@ def draw_endpoint_stiffness(img, K, point, color):
 
 args = parser.parse_args()
 
-blank_image = np.zeros((500, 500, 3), np.uint8)
+blank_image = np.ones((500, 500, 3), np.uint8)
+
+
+HEAD_LOCATION =  np.array([100, 150])
+cv2.ellipse(blank_image, tuple(HEAD_LOCATION), (60, 15), 0, 0, 360, (150, 150, 150), -1)
+cv2.circle(blank_image, tuple(HEAD_LOCATION), 20, (100, 100, 100), -1)
 
 q = np.zeros(args.num_joints)
 for i in range(5):
