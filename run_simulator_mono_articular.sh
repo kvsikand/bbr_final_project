@@ -1,1 +1,1 @@
-python simulator.py --num_joints 3 --k_t 20 20 20 --joint_lengths 0.75 1.2 0.3 --tendon_lengths 0.5 1.0 0.25
+python simulator.py --num_joints 3 --k_t 10 10 10 --joint_lengths 0.45 0.6 0.15 --tendon_lengths 0.185 0.3 0.075

@@ -1,0 +1,1 @@
+python simulator.py --num_joints 3 --biarticular --k_t 5 5 5 5 5 --joint_lengths 0.45 0.6 0.15 --tendon_lengths 0.185 0.3 0.075 .495 .495 .375 .375

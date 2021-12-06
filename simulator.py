@@ -11,7 +11,7 @@ parser.add_argument('--tendon_lengths', type=float, default=[0.75, 1.0, 0.25], n
 parser.add_argument('--num_joints', type=int, default=2, help='number of joints')
 parser.add_argument('--biarticular', action='store_true')
 
-SCALING = 100
+SCALING = 200
 
 def get_jacobian(q, lengths):
   l_s = lengths[0]
@@ -101,7 +101,7 @@ def get_configuration_endpoint_stiffness_tendons(q, tendon_stiffnesses, lengths,
   return K_endpoint_servo
 
 def draw_configuration(img, q, joint_lengths):
-  CENTER = np.array([150, 150])
+  CENTER = np.array([250, 250])
   COLOR = (0, 255, 0)
 
   # cv2.line(img, (HEAD_LOCATION[0], HEAD_LOCATION[1]), (CENTER[0], CENTER[1]), COLOR)
@@ -152,14 +152,14 @@ def draw_endpoint_stiffness(img, K, point, color):
     eigenvectors = eigenvectors[:, ::-1]
   angle = np.arctan2(eigenvectors[0][1], eigenvectors[0][0])
   print('eigenvalues', eigenvalues)
-  cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0]), int(eigenvalues[1])), 90 - np.degrees(angle), 0, 360, color)
+  cv2.ellipse(img, (point[0], point[1]), (int(eigenvalues[0]), int(eigenvalues[1])), 90 - np.degrees(angle), 0, 360, color, 2)
 
 args = parser.parse_args()
 
-blank_image = np.ones((500, 500, 3), np.uint8)
+blank_image = np.ones((1000, 1000, 3), np.uint8)
 
 
-HEAD_LOCATION =  np.array([100, 150])
+HEAD_LOCATION =  np.array([200, 250])
 cv2.ellipse(blank_image, tuple(HEAD_LOCATION), (60, 15), 0, 0, 360, (150, 150, 150), -1)
 cv2.circle(blank_image, tuple(HEAD_LOCATION), 20, (100, 100, 100), -1)
 
